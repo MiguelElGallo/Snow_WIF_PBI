@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant C as Mac / SQL client
+    participant S as Snowflake
+    participant E as Microsoft Entra ID
+    participant P as Power BI
+
+    Note over C,P: VERIFIED · Trial test · Python runs on the Mac
+    C->>S: Request signed statement
+    S-->>C: Signed statement
+    C->>E: Present signed statement
+    E-->>C: Power BI access token
+    C->>P: List workspaces with access token
+    P-->>C: HTTP 200 · one workspace
+
+    Note over C,P: UNTESTED · Full setup · Python runs inside Snowflake
+    C->>S: Call SQL procedure
+    S->>S: Sign statement
+    S->>E: Present signed statement
+    E-->>S: Power BI access token
+    S->>P: List workspaces with access token
+    P-->>S: Workspace page
+    S-->>C: Return workspace page

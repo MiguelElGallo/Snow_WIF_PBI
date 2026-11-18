@@ -2,11 +2,23 @@
 
 **The Mac test passed. The end-to-end stored procedure call is still unverified.** Snowflake issued a signed workload identity token in the trial account. Python running on the Mac exchanged it with Microsoft Entra ID and called the Power BI admin API. Both Microsoft endpoints returned HTTP 200, and Power BI returned one workspace.
 
+## Who calls whom?
+
+Read the diagram from top to bottom. Solid arrows show requests. Dashed arrows show replies. In the verified test, the Mac sends Snowflake’s signed statement to Entra, then sends the access token Entra returns to Power BI. In the untested setup, the client calls a SQL procedure. Python running inside Snowflake makes both requests to Microsoft.
+
+![Verified trial: the Mac requests a signed statement from Snowflake and calls Entra and Power BI. Untested full setup: the SQL client calls a procedure, and Snowflake calls Entra and Power BI.](docs/images/call-paths.png)
+
+[Open the full-size diagram](docs/images/call-paths.png)
+
+**Why does Entra accept a request from the Mac?** Entra trusts Snowflake’s signature. The Mac signs in through its configured Snowflake CLI connection. Its active role allows it to request a short-lived, signed statement called an *assertion*. The Mac carries that statement to Entra. Entra checks the signature with Snowflake’s public key. It also checks three details against the trust settings on the registered app. The issuer identifies Snowflake, the subject identifies this workload, and the audience identifies Entra’s token exchange.
+
+When those checks pass, Entra gives the Mac a Power BI access token for **the app**. This works without registering the Mac as a trusted device. Power BI allows the workspace request because the app’s identity in this tenant (its *service principal*) belongs to the group that Fabric allows to use read-only admin APIs.
+
 | Where the code ran | What happened |
 | --- | --- |
 | Snowflake trial | Created the workload identity secret, issued the assertion, created the SQL procedure, and rejected an invalid page size as expected. |
 | Mac | Ran the Python handler from the deployment SQL. The Mac made both outbound HTTPS requests and checked the returned workspace count. |
-| Snowflake procedure with real outbound access | Still needs testing. The trial rejected the external access integration with error 509009, so the HTTP handler could not be deployed there. |
+| Snowflake procedure with real outbound access | Still needs testing. The trial rejected the external access integration (the Snowflake setting that allows outbound requests) with error 509009, so the Python helper could not be deployed there. |
 
 ## Repeat the successful test from a Mac
 
@@ -69,17 +81,17 @@ Mac to Entra token endpoint: HTTP 200
 Mac to Power BI admin API: HTTP 200 (workspace rows: 1)
 ```
 
-An empty Power BI page gives a row count of zero. HTTP 200 confirms that Power BI accepted the request. All Microsoft traffic in this test originates on the Mac.
+An empty Power BI page gives a row count of zero. HTTP 200 confirms that Power BI accepted the request. The Mac sent the token request to Entra and the workspace request to Power BI.
 
 ## What still needs testing inside Snowflake
 
-Use a Snowflake account that supports external access integrations. Create or confirm its WIF secret and register **that secret's** issuer and subject in Entra. Then deploy `sql/02_external_access.sql` and `sql/03_procedure.sql` using the commands in the [deployment guide](docs/how-to.md#deploy-the-http-handler-and-procedure). Run the following SQL on a warehouse in that account.
+Use a Snowflake account that supports external access integrations. Create or confirm its workload identity secret and register **that secret's** issuer and subject in Entra. Then deploy `sql/02_external_access.sql` and `sql/03_procedure.sql` using the commands in the [deployment guide](docs/how-to.md#deploy-the-http-handler-and-procedure). Run the following SQL on a warehouse in that account.
 
 ```sql
 CALL POWERBI_WIF.API.LIST_ADMIN_WORKSPACES(1, 0);
 ```
 
-The end-to-end test passes when this **SQL call** returns a real Power BI page with `count` and `workspaces`. That exercises both HTTPS requests from Snowflake's Python runtime through the configured egress integration. The successful Mac test establishes Entra trust and Power BI authorization independently.
+The end-to-end test passes when this **SQL call** returns a real Power BI page with `count` and `workspaces`. That exercises both HTTPS requests from Snowflake's Python runtime through the external access integration. The successful Mac test establishes Entra trust and Power BI authorization independently.
 
 ## Documentation
 
