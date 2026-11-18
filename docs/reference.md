@@ -33,7 +33,7 @@ The network rule permits HTTPS on port 443 to `login.microsoftonline.com` and `a
 | --- | --- |
 | Snowflake CLI access | Activated `ACCOUNTADMIN` |
 | Identity and authorization | Created the WIF secret, federated credential, group and app. Verified direct group membership and saved Fabric setting. |
-| Live token exchange and Power BI endpoint | Ran the repository's Python handler locally with a real Snowflake-issued assertion. Entra and Power BI both returned HTTP 200. One workspace was returned. |
+| Live token exchange and Power BI endpoint | The [Mac test script](../scripts/test_from_mac.py) ran the deployment's Python handler on the Mac with a real Snowflake-issued assertion. Entra and Power BI both returned HTTP 200. One workspace was returned. |
 | SQL entry point on the trial | Created the stored procedure. Calling it with page size zero raised `-20001`. |
 | Python runtime and tutorial SQL on the trial | Created a temporary copy of the HTTP function with the integration clause omitted. A temporary procedure passed a real assertion to a test function that returned a fictional workspace. The tutorial's SQL pipe produced the expected name and state. |
 | Full in-Snowflake call | Blocked. The trial rejected the external access integration with 509009. Calling the procedure with valid inputs reported that its HTTP helper was missing. |
